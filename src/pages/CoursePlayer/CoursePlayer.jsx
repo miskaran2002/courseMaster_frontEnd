@@ -139,16 +139,16 @@ export default function CoursePlayer() {
                         <div className="card bg-base-100 shadow">
                             <div className="card-body p-3 sm:p-6">
                                 <h3 className="card-title text-base sm:text-lg md:text-xl break-words">{lesson.title}</h3>
-                                <div className="bg-base-300 rounded overflow-hidden mt-2 sm:mt-4">
-                                    <iframe
-                                        style={{ height: '700px', width: '300px' }}
-                                        src={convertToEmbedUrl(lesson.videoUrl)}
-                                        title={lesson.title}
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                        allowFullScreen
-                                        frameBorder="0"
-                                    ></iframe>
-                                </div>
+                                <div className="bg-base-300 rounded overflow-hidden mt-2 sm:mt-4 relative w-full aspect-video">
+                <iframe
+                    className="absolute top-0 left-0 w-full h-full"
+                    src={convertToEmbedUrl(lesson.videoUrl)}
+                    title={lesson.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    frameBorder="0"
+                ></iframe>
+            </div>
 
                                 <button
                                     onClick={handleMarkComplete}
