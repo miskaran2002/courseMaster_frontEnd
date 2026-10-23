@@ -10,7 +10,6 @@ export default function Navbar() {
     const token = getToken();
     const [me, setMe] = useState(null);
 
-    // FIXED: Removed the buggy 'startsWith("/")' condition. Now it properly tracks the active page.
     const navLinkClass = ({ isActive }) =>
         isActive
             ? "text-primary font-semibold"
@@ -56,8 +55,8 @@ export default function Navbar() {
                         <li><NavLink className={navLinkClass} to="/">Home</NavLink></li>
                         <li><NavLink className={navLinkClass} to="/courses">Courses</NavLink></li>
 
-                        {/* Dashboard when logged in OR when dev_bypass is active */}
-                        {(token && me) ? (
+                        {/* Dashboard link ONLY when user is logged in and authenticated */}
+                        {token && me && (
                             <li>
                                 <NavLink
                                     className={navLinkClass}
@@ -66,12 +65,7 @@ export default function Navbar() {
                                     Dashboard
                                 </NavLink>
                             </li>
-                        ) : (localStorage.getItem("dev_bypass") === "true") ? (
-                            <>
-                                <li><NavLink className={navLinkClass} to="/student">Student Portal</NavLink></li>
-                                <li><NavLink className={navLinkClass} to="/admin">Admin Portal</NavLink></li>
-                            </>
-                        ) : null}
+                        )}
                     </ul>
                 </div>
 
@@ -97,7 +91,6 @@ export default function Navbar() {
                                 </div>
                             </label>
 
-                            {/* FIXED: Changed <ul> to <div> for the dropdown container to fix invalid DOM nesting */}
                             <div
                                 tabIndex={0}
                                 className="dropdown-content mt-3 p-3 shadow bg-base-100 rounded-box w-60 border border-base-300 z-[1]"
@@ -137,7 +130,6 @@ export default function Navbar() {
                             </svg>
                         </label>
 
-                        {/* FIXED: Changed <ul> to <div> to fix DOM nesting */}
                         <div
                             tabIndex={0}
                             className="dropdown-content mt-3 p-3 shadow bg-base-100 rounded-box w-56 border border-base-300 items-center text-center max-h-[80vh] overflow-y-auto z-[1]"
@@ -146,7 +138,6 @@ export default function Navbar() {
                                 <li><NavLink className={navLinkClass} to="/">Home</NavLink></li>
                                 <li><NavLink className={navLinkClass} to="/courses">Courses</NavLink></li>
 
-                                {/* Dashboard only when logged in */}
                                 {token && me && (
                                     <li>
                                         <NavLink
