@@ -10,8 +10,9 @@ export default function Navbar() {
     const token = getToken();
     const [me, setMe] = useState(null);
 
-    const navLinkClass = ({ isActive, to }) =>
-        (isActive || window.location.pathname.startsWith("/"))
+    // FIXED: Removed the buggy 'startsWith("/")' condition. Now it properly tracks the active page.
+    const navLinkClass = ({ isActive }) =>
+        isActive
             ? "text-primary font-semibold"
             : "text-base-content/80 hover:text-primary";
 
@@ -55,7 +56,7 @@ export default function Navbar() {
                         <li><NavLink className={navLinkClass} to="/">Home</NavLink></li>
                         <li><NavLink className={navLinkClass} to="/courses">Courses</NavLink></li>
 
-                        {/* ✅ Dashboard when logged in OR when dev_bypass is active */}
+                        {/* Dashboard when logged in OR when dev_bypass is active */}
                         {(token && me) ? (
                             <li>
                                 <NavLink
@@ -96,9 +97,10 @@ export default function Navbar() {
                                 </div>
                             </label>
 
-                            <ul
+                            {/* FIXED: Changed <ul> to <div> for the dropdown container to fix invalid DOM nesting */}
+                            <div
                                 tabIndex={0}
-                                className="dropdown-content mt-3 p-3 shadow bg-base-100 rounded-box w-60 border border-base-300"
+                                className="dropdown-content mt-3 p-3 shadow bg-base-100 rounded-box w-60 border border-base-300 z-[1]"
                             >
                                 <div className="px-2 pb-2">
                                     <p className="font-semibold">{me.name}</p>
@@ -108,19 +110,20 @@ export default function Navbar() {
 
                                 <div className="my-2 border-t border-base-300" />
 
-                                {/* ✅ Dashboard inside dropdown only when logged in */}
-                                <li>
-                                    <Link to={me.role === "admin" ? "/admin" : "/student"}>
-                                        Dashboard
-                                    </Link>
-                                </li>
-                                <li><Link to="/profile">Profile</Link></li>
-                                <li>
-                                    <button onClick={handleLogout} className="text-red-500">
-                                        Logout
-                                    </button>
-                                </li>
-                            </ul>
+                                <ul className="menu menu-sm px-0">
+                                    <li>
+                                        <Link to={me.role === "admin" ? "/admin" : "/student"}>
+                                            Dashboard
+                                        </Link>
+                                    </li>
+                                    <li><Link to="/profile">Profile</Link></li>
+                                    <li>
+                                        <button onClick={handleLogout} className="text-red-500">
+                                            Logout
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     )}
 
@@ -134,40 +137,35 @@ export default function Navbar() {
                             </svg>
                         </label>
 
-                        <ul
+                        {/* FIXED: Changed <ul> to <div> to fix DOM nesting */}
+                        <div
                             tabIndex={0}
-                            className="
-                menu menu-sm dropdown-content mt-3 p-3 shadow
-                bg-base-100 rounded-box w-56 border border-base-300
-                items-center text-center max-h-32 overflow-hidden
-              "
+                            className="dropdown-content mt-3 p-3 shadow bg-base-100 rounded-box w-56 border border-base-300 items-center text-center max-h-[80vh] overflow-y-auto z-[1]"
                         >
-                            <li><NavLink className={navLinkClass} to="/">Home</NavLink></li>
-                            <li><NavLink className={navLinkClass} to="/courses">Courses</NavLink></li>
+                            <ul className="menu menu-sm w-full">
+                                <li><NavLink className={navLinkClass} to="/">Home</NavLink></li>
+                                <li><NavLink className={navLinkClass} to="/courses">Courses</NavLink></li>
 
-                            {/* ✅ Dashboard only when logged in */}
-                            {token && me && (
-                                <li>
-                                    <NavLink
-                                        className={navLinkClass}
-                                        to={me.role === "admin" ? "/admin" : "/student"}
-                                    >
-                                        Dashboard
-                                    </NavLink>
-                                </li>
-                            )}
+                                {/* Dashboard only when logged in */}
+                                {token && me && (
+                                    <li>
+                                        <NavLink
+                                            className={navLinkClass}
+                                            to={me.role === "admin" ? "/admin" : "/student"}
+                                        >
+                                            Dashboard
+                                        </NavLink>
+                                    </li>
+                                )}
+                            </ul>
 
                             <div className="my-2 w-full border-t border-base-300" />
 
                             {!token ? (
-                                <>
-                                    <li className="w-full">
-                                        <Link to="/login" className="btn btn-ghost btn-sm w-full">Login</Link>
-                                    </li>
-                                    <li className="w-full">
-                                        <Link to="/register" className="btn btn-primary btn-sm w-full">Enroll Now</Link>
-                                    </li>
-                                </>
+                                <div className="flex flex-col gap-2 w-full px-2">
+                                    <Link to="/login" className="btn btn-ghost btn-sm w-full">Login</Link>
+                                    <Link to="/register" className="btn btn-primary btn-sm w-full">Enroll Now</Link>
+                                </div>
                             ) : (
                                 <>
                                     <div className="flex flex-col items-center gap-2 py-2">
@@ -180,22 +178,22 @@ export default function Navbar() {
 
                                     <div className="my-2 w-full border-t border-base-300" />
 
-                                    {/* ✅ Dashboard only when logged in */}
-                                    <li className="w-full">
-                                        <Link to={me?.role === "admin" ? "/admin" : "/student"} className="w-full">
-                                            Dashboard
-                                        </Link>
-                                    </li>
-
-                                    <li className="w-full"><Link to="/profile">Profile</Link></li>
-                                    <li className="w-full">
-                                        <button onClick={handleLogout} className="btn btn-ghost btn-sm w-full text-red-500">
-                                            Logout
-                                        </button>
-                                    </li>
+                                    <ul className="menu menu-sm w-full">
+                                        <li>
+                                            <Link to={me?.role === "admin" ? "/admin" : "/student"} className="w-full justify-center">
+                                                Dashboard
+                                            </Link>
+                                        </li>
+                                        <li><Link to="/profile" className="w-full justify-center">Profile</Link></li>
+                                        <li>
+                                            <button onClick={handleLogout} className="btn btn-ghost btn-sm w-full text-red-500">
+                                                Logout
+                                            </button>
+                                        </li>
+                                    </ul>
                                 </>
                             )}
-                        </ul>
+                        </div>
                     </div>
 
                 </div>
