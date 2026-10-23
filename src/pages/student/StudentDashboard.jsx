@@ -143,6 +143,11 @@ export default function StudentDashboard() {
         loadCourseStats(courseId, true);
     };
 
+    const getCourseProgressPercent = (completedLessonsCount, totalLessonsCount) => {
+        if (!totalLessonsCount || totalLessonsCount <= 0) return 0;
+        return Math.min(100, Math.round((completedLessonsCount / totalLessonsCount) * 100));
+    };
+
     // Note: Stats will be refreshed when user expands the course details
     // The data is fetched fresh from the database each time
 
@@ -169,7 +174,7 @@ export default function StudentDashboard() {
                 </div>
             )}
 
-            {enrollments.length === 0 ? (
+            {(!enrollments || enrollments.length === 0) ? (
                 <div className="card bg-base-200">
                     <div className="card-body text-center py-12">
                         <h2 className="card-title justify-center">No courses enrolled yet</h2>
@@ -183,7 +188,7 @@ export default function StudentDashboard() {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {enrollments.map((enrollment) => {
+                    {enrollments?.map((enrollment) => {
                         const courseId = enrollment.course?._id;
                         const isExpanded = expandedCourse === courseId;
                         const stats = courseStats[courseId];
@@ -258,7 +263,14 @@ export default function StudentDashboard() {
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-2xl sm:text-3xl font-bold text-primary">
-                                                    {Math.round((enrollment.progress?.completedLessons?.length / (stats?.courseData?.syllabus?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0))) * 100)}%
+                                                    {(() => {
+                                                        const completedCount = enrollment.progress?.completedLessons?.length || 0;
+                                                        const totalLessons = stats?.courseData?.syllabus?.reduce(
+                                                            (acc, module) => acc + (module.lessons?.length || 0),
+                                                            0
+                                                        ) || 0;
+                                                        return `${getCourseProgressPercent(completedCount, totalLessons)}%`;
+                                                    })()}
                                                 </p>
                                             </div>
                                         </div>
