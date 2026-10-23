@@ -36,12 +36,12 @@ export default function CourseCard({ course }) {
                         {course.title}
                     </h2>
 
-                    <p className="text-sm text-base-content/70 mt-2 flex items-center gap-2">
+                    <div className="text-sm text-base-content/70 mt-2 flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-xs">
                             {course.instructorName ? course.instructorName[0].toUpperCase() : "I"}
                         </div>
                         <span className="font-semibold text-xs text-base-content/80">By {course.instructorName}</span>
-                    </p>
+                    </div>
                 </div>
 
                 {course.tags && course.tags.length > 0 && (
