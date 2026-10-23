@@ -32,7 +32,7 @@ export default function CourseCard({ course }) {
 
             <div className="card-body p-5 flex flex-col flex-1 justify-between space-y-4">
                 <div>
-                    <h2 className="card-title text-lg sm:text-xl font-bold leading-snug group-hover:text-primary transition-colors whitespace-nowrap overflow-visible">
+                    <h2 className="card-title text-lg sm:text-xl font-bold leading-snug group-hover:text-primary transition-colors line-clamp-2">
                         {course.title}
                     </h2>
 
