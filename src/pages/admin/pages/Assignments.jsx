@@ -30,19 +30,22 @@ export default function Assignments() {
     const submitReview = async () => {
         if (!reviewingId) return;
 
-        // Validate required fields
-        if (!reviewGrade || reviewGrade.trim() === "") {
+        // Make validation safer
+        const gradeStr = String(reviewGrade || "").trim();
+        const notesStr = String(reviewNotes || "").trim();
+
+        if (!gradeStr) {
             alert("Please enter a grade (0-100)");
             return;
         }
-        if (!reviewNotes || reviewNotes.trim() === "") {
+        if (!notesStr) {
             alert("Please provide feedback to the student");
             return;
         }
 
-        const gradeNum = Number(reviewGrade);
+        const gradeNum = Number(gradeStr);
         if (isNaN(gradeNum) || gradeNum < 0 || gradeNum > 100) {
-            alert("Grade must be a number between 0 and 100");
+            alert("Grade must be a valid number between 0 and 100");
             return;
         }
 
@@ -50,7 +53,7 @@ export default function Assignments() {
             setActionLoading(true);
             await reviewAssignment(reviewingId, {
                 status: "reviewed",
-                reviewNotes: reviewNotes.trim(),
+                reviewNotes: notesStr,
                 grade: gradeNum
             });
             await dispatch(fetchAssignments());
@@ -267,10 +270,10 @@ export default function Assignments() {
 
                             <div className="flex gap-2">
                                 <button
-                                    className="btn btn-primary flex-1"
-                                    onClick={submitReview}
-                                    disabled={actionLoading || !reviewGrade || !reviewNotes.trim()}
-                                >
+    className="btn btn-primary flex-1"
+    onClick={submitReview}
+    disabled={actionLoading}
+>
                                     {actionLoading ? (
                                         <>
                                             <span className="loading loading-spinner loading-sm"></span>
@@ -344,7 +347,7 @@ export default function Assignments() {
                                                 </a>
                                             ) : (
                                                 <span className="text-xs truncate block" title={assign.answer}>
-                                                    📄 {assign.answer.substring(0, 30)}...
+                                                    📄 {assign.answer?.substring(0, 30)}...
                                                 </span>
                                             )}
                                         </td>
@@ -370,31 +373,14 @@ export default function Assignments() {
                                         </td>
                                         <td>
                                             <div className="flex items-center gap-2">
-                                                {assign.status === "submitted" ? (
-                                                    <button
-                                                        className="btn btn-sm btn-primary"
-                                                        onClick={() => startReview(assign._id)}
-                                                        disabled={reviewingId === assign._id}
-                                                    >
-                                                        {reviewingId === assign._id ? (
-                                                            <span className="loading loading-spinner loading-xs"></span>
-                                                        ) : (
-                                                            "Review"
-                                                        )}
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        className="btn btn-sm btn-outline"
-                                                        onClick={() => startReview(assign._id)}
-                                                        disabled={reviewingId === assign._id}
-                                                    >
-                                                        {reviewingId === assign._id ? (
-                                                            <span className="loading loading-spinner loading-xs"></span>
-                                                        ) : (
-                                                            "Edit Review"
-                                                        )}
-                                                    </button>
-                                                )}
+                                                {/* FIXED: Removed the deceptive loading spinner for active state */}
+                                                <button
+                                                    className={`btn btn-sm ${reviewingId === assign._id ? "btn-secondary" : (assign.status === "submitted" ? "btn-primary" : "btn-outline")}`}
+                                                    onClick={() => startReview(assign._id)}
+                                                    disabled={reviewingId === assign._id}
+                                                >
+                                                    {reviewingId === assign._id ? "Reviewing..." : (assign.status === "submitted" ? "Review" : "Edit Review")}
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -454,31 +440,14 @@ export default function Assignments() {
                                     </div>
 
                                     <div className="mt-3">
-                                        {assign.status === "submitted" ? (
-                                            <button
-                                                className="btn btn-sm btn-primary w-full"
-                                                onClick={() => startReview(assign._id)}
-                                                disabled={reviewingId === assign._id}
-                                            >
-                                                {reviewingId === assign._id ? (
-                                                    <span className="loading loading-spinner loading-xs"></span>
-                                                ) : (
-                                                    "Review"
-                                                )}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                className="btn btn-sm btn-outline w-full"
-                                                onClick={() => startReview(assign._id)}
-                                                disabled={reviewingId === assign._id}
-                                            >
-                                                {reviewingId === assign._id ? (
-                                                    <span className="loading loading-spinner loading-xs"></span>
-                                                ) : (
-                                                    "Edit Review"
-                                                )}
-                                            </button>
-                                        )}
+                                        {/* FIXED: Removed the deceptive loading spinner for mobile view too */}
+                                        <button
+                                            className={`btn btn-sm w-full ${reviewingId === assign._id ? "btn-secondary" : (assign.status === "submitted" ? "btn-primary" : "btn-outline")}`}
+                                            onClick={() => startReview(assign._id)}
+                                            disabled={reviewingId === assign._id}
+                                        >
+                                            {reviewingId === assign._id ? "Reviewing..." : (assign.status === "submitted" ? "Review" : "Edit Review")}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
