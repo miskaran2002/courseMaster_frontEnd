@@ -54,39 +54,30 @@ export default function StudentDashboard() {
 
     // Fetch stats for a specific course (optimized)
     const loadCourseStats = async (courseId, forceRefresh = false) => {
-        // Skip if already loaded and not forcing refresh
         if (courseStats[courseId] && !forceRefresh) return;
-
-        // Prevent duplicate requests
         if (loadingStats[courseId]) return;
 
         setLoadingStats(prev => ({ ...prev, [courseId]: true }));
 
         try {
-            // Check if course data is already available
             let courseData = courseStats[courseId]?.courseData;
 
-            // Only fetch course data if not available
             if (!courseData || forceRefresh) {
                 try {
-                    // Try to get from current course if it matches
                     if (currentCourse?._id === courseId) {
                         courseData = currentCourse;
                     } else {
-                        // Fetch directly via API
                         const res = await getCourseById(courseId);
                         courseData = res.data;
                     }
                 } catch (err) {
                     console.error("Failed to fetch course:", err);
-                    // Use existing courseData if available, otherwise null
                     if (!courseData) {
                         courseData = null;
                     }
                 }
             }
 
-            // Fetch quiz and assignment stats in parallel
             const [quizRes, assignmentRes] = await Promise.all([
                 getQuizStats(courseId).catch(err => {
                     console.error("Quiz stats error:", err);
@@ -98,7 +89,6 @@ export default function StudentDashboard() {
                 }),
             ]);
 
-            // Create lesson map for fast lookups
             const lessonMap = courseData ? createLessonMap(courseData) : {};
 
             setCourseStats(prev => ({
@@ -126,15 +116,12 @@ export default function StudentDashboard() {
         }
     };
 
-    // Refresh stats for a course
     const handleRefreshStats = (courseId) => {
-        // Clear cache for this course
         Object.keys(lessonTitleCache.current).forEach(key => {
             if (key.startsWith(`${courseId}_`)) {
                 delete lessonTitleCache.current[key];
             }
         });
-        // Clear stats and reload
         setCourseStats(prev => {
             const newStats = { ...prev };
             delete newStats[courseId];
@@ -147,9 +134,6 @@ export default function StudentDashboard() {
         if (!totalLessonsCount || totalLessonsCount <= 0) return 0;
         return Math.min(100, Math.round((completedLessonsCount / totalLessonsCount) * 100));
     };
-
-    // Note: Stats will be refreshed when user expands the course details
-    // The data is fetched fresh from the database each time
 
     if (loading) {
         return (
@@ -194,6 +178,20 @@ export default function StudentDashboard() {
                         const stats = courseStats[courseId];
                         const isLoading = loadingStats[courseId];
 
+                        // --- FIXED PART START ---
+                        // Calculate percentage once to use in both text and progress bar
+                        const completedCount = enrollment.progress?.completedLessons?.length || 0;
+                        const totalLessons = stats?.courseData?.syllabus?.reduce(
+                            (acc, module) => acc + (module.lessons?.length || 0),
+                            0
+                        ) || 0;
+                        
+                        // Use calculated percent, fallback to database percent, or default to 0
+                        const calculatedPercent = totalLessons > 0 
+                            ? getCourseProgressPercent(completedCount, totalLessons) 
+                            : enrollment.progress?.percent || 0;
+                        // --- FIXED PART END ---
+
                         return (
                             <div
                                 key={enrollment._id}
@@ -231,68 +229,36 @@ export default function StudentDashboard() {
                                         <div className="flex justify-between items-center mb-3">
                                             <div>
                                                 <p className="text-sm font-semibold text-base-content/80">Course Progress</p>
-                                                {(() => {
-                                                    const completedCount = enrollment.progress?.completedLessons?.length || 0;
-                                                    const courseData = stats?.courseData;
-                                                    let totalLessons = 0;
-
-                                                    // Calculate total lessons (cached if available)
-                                                    if (courseData?.syllabus) {
-                                                        courseData.syllabus.forEach(module => {
-                                                            if (module.lessons) {
-                                                                totalLessons += module.lessons.length;
-                                                            }
-                                                        });
-                                                    }
-
-                                                    if (totalLessons > 0) {
-                                                        return (
-                                                            <p className="text-xs text-base-content/70 mt-1">
-                                                                {completedCount} of {totalLessons} lessons completed
-                                                            </p>
-                                                        );
-                                                    } else if (completedCount > 0) {
-                                                        return (
-                                                            <p className="text-xs text-base-content/70 mt-1">
-                                                                {completedCount} lesson{completedCount !== 1 ? 's' : ''} completed
-                                                            </p>
-                                                        );
-                                                    }
-                                                    return null;
-                                                })()}
+                                                {totalLessons > 0 ? (
+                                                    <p className="text-xs text-base-content/70 mt-1">
+                                                        {completedCount} of {totalLessons} lessons completed
+                                                    </p>
+                                                ) : completedCount > 0 ? (
+                                                    <p className="text-xs text-base-content/70 mt-1">
+                                                        {completedCount} lesson{completedCount !== 1 ? 's' : ''} completed
+                                                    </p>
+                                                ) : null}
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-2xl sm:text-3xl font-bold text-primary">
-                                                    {(() => {
-                                                        const completedCount = enrollment.progress?.completedLessons?.length || 0;
-                                                        const totalLessons = stats?.courseData?.syllabus?.reduce(
-                                                            (acc, module) => acc + (module.lessons?.length || 0),
-                                                            0
-                                                        ) || 0;
-                                                        return `${getCourseProgressPercent(completedCount, totalLessons)}%`;
-                                                    })()}
+                                                    {calculatedPercent}%
                                                 </p>
                                             </div>
                                         </div>
+                                        
+                                        {/* FIXED: Uses the consistently calculated percentage instead of relying solely on the DB string/number mismatch */}
                                         <progress
                                             className="progress progress-primary w-full h-4"
-                                            value={enrollment.progress?.percent || 0}
+                                            value={calculatedPercent}
                                             max="100"
                                         ></progress>
+                                        
                                         {isExpanded && stats && (
                                             <div className="flex justify-between items-center mt-3 pt-3 border-t border-base-300 text-xs text-base-content/60">
                                                 <span>📚 Course Content</span>
                                                 <div className="flex gap-3">
-                                                    {(() => {
-                                                        const quizCount = stats.quizStats?.totalQuizzes || 0;
-                                                        const assignCount = stats.assignmentStats?.totalAssignments || 0;
-                                                        return (
-                                                            <>
-                                                                {quizCount > 0 && <span>❓ {quizCount} Quiz{quizCount !== 1 ? 'zes' : ''}</span>}
-                                                                {assignCount > 0 && <span>📝 {assignCount} Assignment{assignCount !== 1 ? 's' : ''}</span>}
-                                                            </>
-                                                        );
-                                                    })()}
+                                                    {stats.quizStats?.totalQuizzes > 0 && <span>❓ {stats.quizStats.totalQuizzes} Quiz{stats.quizStats.totalQuizzes !== 1 ? 'zes' : ''}</span>}
+                                                    {stats.assignmentStats?.totalAssignments > 0 && <span>📝 {stats.assignmentStats.totalAssignments} Assignment{stats.assignmentStats.totalAssignments !== 1 ? 's' : ''}</span>}
                                                 </div>
                                             </div>
                                         )}
@@ -307,7 +273,6 @@ export default function StudentDashboard() {
                                                 </div>
                                             ) : stats ? (
                                                 <>
-                                                    {/* Refresh Button */}
                                                     <div className="flex justify-end mb-2">
                                                         <button
                                                             onClick={() => handleRefreshStats(courseId)}
@@ -315,43 +280,27 @@ export default function StudentDashboard() {
                                                             className="btn btn-sm btn-outline btn-circle"
                                                             title="Refresh Stats"
                                                         >
-                                                            {isLoading ? (
-                                                                <span className="loading loading-spinner loading-xs"></span>
-                                                            ) : (
-                                                                "🔄"
-                                                            )}
+                                                            {isLoading ? <span className="loading loading-spinner loading-xs"></span> : "🔄"}
                                                         </button>
                                                     </div>
 
-                                                    {/* Statistics Cards */}
                                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                                                        {/* Quiz Average */}
                                                         <div className="card bg-primary text-primary-content">
                                                             <div className="card-body p-3 sm:p-4">
                                                                 <h3 className="text-xs sm:text-sm font-semibold opacity-80">Quiz Average</h3>
-                                                                <p className="text-2xl sm:text-3xl font-bold">
-                                                                    {stats.quizStats?.average || 0}%
-                                                                </p>
-                                                                <p className="text-xs opacity-70">
-                                                                    {stats.quizStats?.totalQuizzes || 0} quiz{stats.quizStats?.totalQuizzes !== 1 ? 'zes' : ''} taken
-                                                                </p>
+                                                                <p className="text-2xl sm:text-3xl font-bold">{stats.quizStats?.average || 0}%</p>
+                                                                <p className="text-xs opacity-70">{stats.quizStats?.totalQuizzes || 0} quiz{stats.quizStats?.totalQuizzes !== 1 ? 'zes' : ''} taken</p>
                                                             </div>
                                                         </div>
 
-                                                        {/* Assignment Average */}
                                                         <div className="card bg-secondary text-secondary-content">
                                                             <div className="card-body p-3 sm:p-4">
                                                                 <h3 className="text-xs sm:text-sm font-semibold opacity-80">Assignment Average</h3>
-                                                                <p className="text-2xl sm:text-3xl font-bold">
-                                                                    {stats.assignmentStats?.average || 0}%
-                                                                </p>
-                                                                <p className="text-xs opacity-70">
-                                                                    {stats.assignmentStats?.reviewedCount || 0} of {stats.assignmentStats?.totalAssignments || 0} reviewed
-                                                                </p>
+                                                                <p className="text-2xl sm:text-3xl font-bold">{stats.assignmentStats?.average || 0}%</p>
+                                                                <p className="text-xs opacity-70">{stats.assignmentStats?.reviewedCount || 0} of {stats.assignmentStats?.totalAssignments || 0} reviewed</p>
                                                             </div>
                                                         </div>
 
-                                                        {/* Overall Grade */}
                                                         <div className="card bg-accent text-accent-content">
                                                             <div className="card-body p-3 sm:p-4">
                                                                 <h3 className="text-xs sm:text-sm font-semibold opacity-80">Overall Grade</h3>
@@ -363,7 +312,6 @@ export default function StudentDashboard() {
                                                                         const assignCount = stats.assignmentStats?.reviewedCount || 0;
                                                                         const total = quizCount + assignCount;
                                                                         if (total === 0) return "N/A";
-                                                                        // Calculate weighted average more efficiently
                                                                         const overall = Math.round((quizAvg * quizCount + assignAvg * assignCount) / total);
                                                                         return `${overall}%`;
                                                                     })()}
@@ -386,7 +334,6 @@ export default function StudentDashboard() {
                                                                 <div className="space-y-2">
                                                                     {stats.quizStats.submissions.map((quiz, idx) => {
                                                                         const lessonTitle = getLessonTitle(courseId, quiz.lessonId);
-                                                                        // Format date once
                                                                         const submittedDate = quiz.submittedAt ? new Date(quiz.submittedAt) : null;
                                                                         const dateStr = submittedDate ? submittedDate.toLocaleDateString() : 'N/A';
                                                                         const timeStr = submittedDate ? submittedDate.toLocaleTimeString() : '';
@@ -395,22 +342,12 @@ export default function StudentDashboard() {
                                                                             <div key={quiz._id || idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 p-4 bg-base-100 rounded-lg shadow-sm hover:shadow-md transition">
                                                                                 <div className="flex-1 min-w-0">
                                                                                     <p className="font-semibold text-sm sm:text-base break-words">{lessonTitle}</p>
-                                                                                    <p className="text-xs sm:text-sm text-base-content/70 mt-1">
-                                                                                        {quiz.score} out of {quiz.total} questions correct
-                                                                                    </p>
-                                                                                    {submittedDate && (
-                                                                                        <p className="text-xs text-base-content/50 mt-1">
-                                                                                            📅 Submitted: {dateStr} at {timeStr}
-                                                                                        </p>
-                                                                                    )}
+                                                                                    <p className="text-xs sm:text-sm text-base-content/70 mt-1">{quiz.score} out of {quiz.total} questions correct</p>
+                                                                                    {submittedDate && <p className="text-xs text-base-content/50 mt-1">📅 Submitted: {dateStr} at {timeStr}</p>}
                                                                                 </div>
                                                                                 <div className="text-left sm:text-right">
-                                                                                    <p className={`text-2xl sm:text-3xl font-bold ${quiz.percent >= 70 ? 'text-success' : quiz.percent >= 50 ? 'text-warning' : 'text-error'}`}>
-                                                                                        {quiz.percent}%
-                                                                                    </p>
-                                                                                    <p className="text-xs text-base-content/60 mt-1">
-                                                                                        {quiz.percent >= 70 ? 'Excellent!' : quiz.percent >= 50 ? 'Good!' : 'Keep practicing!'}
-                                                                                    </p>
+                                                                                    <p className={`text-2xl sm:text-3xl font-bold ${quiz.percent >= 70 ? 'text-success' : quiz.percent >= 50 ? 'text-warning' : 'text-error'}`}>{quiz.percent}%</p>
+                                                                                    <p className="text-xs text-base-content/60 mt-1">{quiz.percent >= 70 ? 'Excellent!' : quiz.percent >= 50 ? 'Good!' : 'Keep practicing!'}</p>
                                                                                 </div>
                                                                             </div>
                                                                         );
@@ -432,7 +369,6 @@ export default function StudentDashboard() {
                                                                 <div className="space-y-3">
                                                                     {stats.assignmentStats.submissions.map((assignment, idx) => {
                                                                         const lessonTitle = getLessonTitle(courseId, assignment.lessonId);
-                                                                        // Format dates once
                                                                         const submittedDate = assignment.submittedAt ? new Date(assignment.submittedAt) : null;
                                                                         const reviewedDate = assignment.reviewedAt ? new Date(assignment.reviewedAt) : null;
 
@@ -442,55 +378,30 @@ export default function StudentDashboard() {
                                                                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-2">
                                                                                         <div className="flex-1 min-w-0">
                                                                                             <p className="font-semibold text-sm sm:text-base break-words">{lessonTitle}</p>
-                                                                                            {submittedDate && (
-                                                                                                <p className="text-xs sm:text-sm text-base-content/70 mt-1">
-                                                                                                    Submitted: {submittedDate.toLocaleDateString()}
-                                                                                                </p>
-                                                                                            )}
-                                                                                            {assignment.status === "reviewed" && reviewedDate && (
-                                                                                                <p className="text-xs sm:text-sm text-base-content/70">
-                                                                                                    Reviewed: {reviewedDate.toLocaleDateString()}
-                                                                                                </p>
-                                                                                            )}
+                                                                                            {submittedDate && <p className="text-xs sm:text-sm text-base-content/70 mt-1">Submitted: {submittedDate.toLocaleDateString()}</p>}
+                                                                                            {assignment.status === "reviewed" && reviewedDate && <p className="text-xs sm:text-sm text-base-content/70">Reviewed: {reviewedDate.toLocaleDateString()}</p>}
                                                                                         </div>
                                                                                         <div className="text-left sm:text-right">
-                                                                                            <span className={`badge badge-sm ${assignment.status === "reviewed" ? "badge-success" : "badge-warning"}`}>
-                                                                                                {assignment.status === "reviewed" ? "Reviewed" : "Pending"}
-                                                                                            </span>
+                                                                                            <span className={`badge badge-sm ${assignment.status === "reviewed" ? "badge-success" : "badge-warning"}`}>{assignment.status === "reviewed" ? "Reviewed" : "Pending"}</span>
                                                                                             {assignment.grade !== null && assignment.grade !== undefined && (
-                                                                                                <p className={`text-xl sm:text-2xl font-bold mt-2 ${assignment.grade >= 70 ? 'text-success' : assignment.grade >= 50 ? 'text-warning' : 'text-error'}`}>
-                                                                                                    {assignment.grade}%
-                                                                                                </p>
+                                                                                                <p className={`text-xl sm:text-2xl font-bold mt-2 ${assignment.grade >= 70 ? 'text-success' : assignment.grade >= 50 ? 'text-warning' : 'text-error'}`}>{assignment.grade}%</p>
                                                                                             )}
                                                                                         </div>
                                                                                     </div>
-
                                                                                     {assignment.answerType === "link" ? (
                                                                                         <div className="mt-2">
                                                                                             <p className="text-sm font-semibold">Submission:</p>
-                                                                                            <a
-                                                                                                href={assignment.answer}
-                                                                                                target="_blank"
-                                                                                                rel="noopener noreferrer"
-                                                                                                className="text-primary text-sm hover:underline break-all"
-                                                                                            >
-                                                                                                {assignment.answer}
-                                                                                            </a>
+                                                                                            <a href={assignment.answer} target="_blank" rel="noopener noreferrer" className="text-primary text-sm hover:underline break-all">{assignment.answer}</a>
                                                                                         </div>
                                                                                     ) : (
                                                                                         <div className="mt-2">
                                                                                             <p className="text-sm font-semibold">Submission:</p>
-                                                                                            <p className="text-sm text-base-content/80 bg-base-200 p-2 rounded mt-1">
-                                                                                                {assignment.answer}
-                                                                                            </p>
+                                                                                            <p className="text-sm text-base-content/80 bg-base-200 p-2 rounded mt-1">{assignment.answer}</p>
                                                                                         </div>
                                                                                     )}
-
                                                                                     {assignment.reviewNotes && (
                                                                                         <div className="mt-3 p-3 bg-info/10 border border-info/20 rounded">
-                                                                                            <p className="text-sm font-semibold text-info mb-1">
-                                                                                                📝 Feedback from {assignment.reviewer?.name || "Admin"}:
-                                                                                            </p>
+                                                                                            <p className="text-sm font-semibold text-info mb-1">📝 Feedback from {assignment.reviewer?.name || "Admin"}:</p>
                                                                                             <p className="text-sm">{assignment.reviewNotes}</p>
                                                                                         </div>
                                                                                     )}
